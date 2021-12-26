@@ -1,10 +1,6 @@
+#include <vector>
 #include <string>
-
-class Chart
-{
-	public:
-	virtual Chart* updatedChart (Event*) = 0;
-};
+#include <functional>
 
 template <class Element>
 class Collection
@@ -13,14 +9,95 @@ class Collection
 	virtual Collection <Element>* collectionWithNewElement (Element*) = 0;
 };
 
-class ChartsIterator
+template <class Collection, class Element, class Update>
+class Iterator
 {
 	public:
 	virtual void first() = 0;
 	virtual bool isDone() = 0;
 	virtual void next() = 0;
+	virtual Element* current() = 0;
+	virtual void updateCurrentToNewCollection (Update*) = 0;
+	virtual Iterator <Collection, Element, Update>* updatedCollectionIterator() = 0;
+};
+
+template <class Iterator, class Function>
+void forEach (Iterator* iterator, Function function)
+{
+	for (iterator.first(); !iterator.isDone(); iterator.next()) {
+		function (iterator);
+	}
+}
+
+class ChartPoint
+{
+	public:
+	virtual std::string* valueName() = 0;
+	virtual double numberValue() = 0;
+	virtual App* app() = 0;
+};
+
+class ChartPointsIterator
+{
+	public:
+	virtual Iterator <Collection <ChartPoint>, ChartPoint, Event> generalizedIterator() = 0;
+	virtual void first() = 0;
+	virtual bool isDone() = 0;
+	virtual void next() = 0;
+	virtual ChartPoint* current() = 0;
+	virtual void updateCurrentChartPointsToNewChartPoints (Event*) = 0;
+	virtual ChartPointsIterator* updatedChartPointsIterator() = 0;
+};
+
+class Chart
+{
+	public:
+	virtual Chart* updatedChart (Event*) = 0;
+	virtual std::string* name() = 0;
+	virtual ChartPointsIterator* chartPointsIterator() = 0;
+};
+
+class ScreenTimeAllAppsMounth : public Chart
+{
+	public:
+	ScreenTimeAllAppsMounth (std::string* name, Collection <ChartPoint>* chartPoints)
+	: _name {name}, _chartPoints {chartPoints}
+	{
+	}
+
+	ScreenTimeAllAppsMounth* updatedChart (Event* event) override
+	{
+		forEach (_chartPointsIterator,
+		         [event] (ChartPointsIterator* chartPointsIterator) {chartPointsIterator->updateCurrentChartPointsToNewChartPoints(event);}
+		);
+		return new ScreenTimeAllAppsMounth (_name, _chartPointsIterator);
+	}
+
+	std::string* name() override
+	{
+		return _name;
+	}
+
+	ChartPointsIterator* chartPointsIterator() override
+	{
+		return _chartPointsIterator;
+	}
+
+	private:
+	std::string* _name;
+	Collection <ChartPoint>* _chartPoints;
+	ChartPointsIterator* _chartPointsIterator;
+};
+
+class ChartsIterator
+{
+	public:
+	virtual Iterator <Collection <Chart>, Chart, Event> generalizedIterator() = 0;
+	virtual void first() = 0;
+	virtual bool isDone() = 0;
+	virtual void next() = 0;
 	virtual Chart* current() = 0;
-	virtual void updateCurrentInNewCharts (Event*) = 0;
+	virtual void updateCurrentChartsToNewCharts (Event*) = 0;
 	virtual ChartsIterator* updatedChartsIterator() = 0;
 };
 
@@ -79,13 +156,13 @@ class Main
 	{
 		while (true) {
 			Event* event = _userPC->event();
-			for (_chartsIterator->first() ; !_chartsIterator->isDone(); _chartsIterator->next()) {
-				_chartsIterator->updateCurrentInNewCharts (event);
-			}
+			forEach (_chartsIterator,
+			         [event] (ChartsIterator* chartsIterator) {chartsIterator->updateCurrentChartsToNewCharts (event);}
+			);
 			ChartsIterator* updatedChartsIterator = _chartsIterator->updatedChartsIterator();
-			for (updatedChartsIterator->first(); !updatedChartsIterator->isDone(); updatedChartsIterator->next()) {
-				_thisAppWindow->print (updatedChartsIterator->current());
-			}
+			forEach (updatedChartsIterator,
+			         [_thisAppWindow] (ChartsIterator* updatedChartsIterator) {_thisAppWindow->print (updatedChartsIterator->current());}
+			);
 		}
 	}
 
