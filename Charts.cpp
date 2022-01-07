@@ -26,12 +26,38 @@ template <class Collection, class Element, class Update>
 class Iterator
 {
 	public:
-	virtual void first() = 0;
-	virtual bool isDone() = 0;
-	virtual void next() = 0;
-	virtual Element* current() = 0;
-	virtual void updateCurrentToNewCollection (Update*) = 0;
-	virtual Iterator <Collection, Element, Update>* updatedCollectionIterator() = 0;
+	virtual void first()
+	{
+		_iterator->first();
+	}
+
+	virtual bool isDone()
+	{
+		_iterator->isDone();
+	}
+
+	virtual void next()
+	{
+		_iterator->next();
+	}
+
+	virtual Element* current()
+	{
+		_iterator->current();
+	}
+
+	virtual void updateCurrentToNewCollection (Update* update)
+	{
+		_iterator->updateCurrentToNewCollection (update);
+	}
+
+	virtual Iterator <Collection, Element, Update>* updatedCollectionIterator()
+	{
+		return _iterator->updateCurrentToNewCollection();
+	}
+
+	private:
+	Iterator <Collection <Element, Update>, Element, Update>* _iterator;
 };
 
 template <class Element, class Update>
@@ -66,7 +92,7 @@ class VectorIterator : public Iterator <Collection <Element, Update>, Element, U
 	{
 		++_currentIndex;
 		if (_currentIndex > _vector->size()) {
-			throw "_CurrentIndex > vector.size()";
+			throw "_CurrentIndex > vector.size().";
 		}
 	}
 
@@ -135,8 +161,9 @@ class ScreenTimeAllAppsMounth : public Chart
 	ScreenTimeAllAppsMounth* updatedChart (Event* event) override
 	{
 		forEach (_chartPointsIterator,
-		        [event] (ChartPointsIterator* chartPointsIterator)
-				{chartPointsIterator->updateCurrentChartPointToNewChartPoints (event);}
+		        [event] (ChartPointsIterator* chartPointsIterator) {
+				chartPointsIterator->updateCurrentChartPointToNewChartPoints (event);
+			}
 		);
 		ChartPointsIterator* updatedChartPointsIterator = _chartPointsIterator->updatedChartPointsIterator();
 		return new ScreenTimeAllAppsMounth (_name, updatedChartPointsIterator);
@@ -161,8 +188,23 @@ class ScreenTimeAllAppsMounth : public Chart
 class ChartsIterator : public Iterator <Collection <Chart, Event>, Chart, Event>
 {
 	public:
-	virtual void updateCurrentChartsToNewCharts (Event*) = 0;
-	virtual ChartsIterator* updatedChartsIterator() = 0;
+	ChartsIterator (Iterator <Collection <Chart, Event>, Chart, Event>* iterator)
+	: _iterator {iterator}
+	{
+	}
+
+	void updateCurrentChartsToNewCharts (Event* event)
+	{
+		_iterator->updateCurrentToNewCollection (event);
+	}
+
+	ChartsIterator* updatedChartsIterator()
+	{
+		return new ChartsIterator (_iterator->updatedCollectionIterator());
+	}
+	
+	private:
+	Iterator <Collection <Chart, Event>, Chart, Event>* _iterator;
 };
 
 class ThisAppWindow
@@ -221,13 +263,15 @@ class Main
 		while (true) {
 			Event* event = _userPC->event();
 			forEach (_chartsIterator,
-			        [event] (ChartsIterator* chartsIterator)
-					{chartsIterator->updateCurrentChartsToNewCharts (event);}
+			        [event] (ChartsIterator* chartsIterator) {
+					chartsIterator->updateCurrentChartsToNewCharts (event);
+				}
 			);
 			ChartsIterator* updatedChartsIterator = _chartsIterator->updatedChartsIterator();
 			forEach (updatedChartsIterator,
-			        [_thisAppWindow] (ChartsIterator* updatedChartsIterator)
-					{_thisAppWindow->print (updatedChartsIterator->current());}
+			        [this->_thisAppWindow] (ChartsIterator* updatedChartsIterator) {
+					this->_thisAppWindow->print (updatedChartsIterator->current());
+				}
 			);
 		}
 	}
